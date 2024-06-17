@@ -105,12 +105,12 @@ def browse_objects(stdscr, items, *, name, display, previous=None):
             selected = (selected + 1) % len(items)
         elif keyname == b'KEY_PPAGE':
             if page == 0:
-                selected = (pages - 1) * height
+                selected = 0
             else:
                 selected = (selected - height) % len(items)
         elif keyname == b'KEY_NPAGE':
             if page == pages - 1:
-                selected = 0 + (selected % height)
+                selected = len(items) - 1
             else:
                 selected = (selected + height) % len(items)
         elif keyname == b'^G':
