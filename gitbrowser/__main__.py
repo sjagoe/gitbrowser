@@ -2,6 +2,7 @@ from curses.textpad import rectangle
 from math import ceil
 from pathlib import Path, PosixPath
 import curses
+import json
 import os
 
 from pygit2 import Repository
@@ -121,16 +122,20 @@ def browse_objects(stdscr, items, *, name, display, previous=None):
             return items[selected]
 
 
-def history_to_path(repo, history):
+def repo_name(repo):
+    repo_path = Path(repo.path)
+    if repo_path.name == '.git':
+        repo_path = repo_path.parent
+    return repo_path.name
+
+
+def history_to_path(repo, commit, history):
     parts = [i for i in history if i.type == ObjectType.TREE]
     if len(parts) == 0:
         return ''
     names = [i.name for i in parts if i.name is not None]
     path = PosixPath(*names).as_posix()
-    repo_path = Path(repo.path)
-    if repo_path.name == '.git':
-        repo_path = repo_path.parent
-    return f'{repo_path.name}:{path}'
+    return f'{repo_name(repo)}@{commit}:{path}'
 
 
 def browse_git(stdscr, repo, history=None, commit=None, previous=None):
@@ -157,7 +162,7 @@ def browse_git(stdscr, repo, history=None, commit=None, previous=None):
                     stdscr,
                     obj,
                     previous,
-                    name=history_to_path(repo, history),
+                    name=history_to_path(repo, commit, history),
                 )
                 previous = None
 
@@ -172,11 +177,36 @@ def browse_git(stdscr, repo, history=None, commit=None, previous=None):
     return None, None
 
 
+def commit_from_flake(repo, flake):
+    repository_name = repo_name(repo)
+    if flake.name == 'flake.lock':
+        pass
+    if flake.name == 'flake.nix':
+        flake = flake.parent / 'flake.lock'
+    elif flake.is_dir() and (flake / 'flake.lock').is_file():
+        flake = flake / 'flake.lock'
+    else:
+        raise Exception("Can't find flake.lock from {flake.as_posix()}")
+    if not flake.is_file():
+        raise Exception("{flake.as_posix()} doesn't exist")
+
+    with flake.open() as fh:
+        data = json.loads(fh.read())
+    node = data['nodes'][repository_name]
+    return node['locked']['rev']
+
+
 @click.command('gitbrowser')
 @click.option('--commit-id', '-c')
 @click.option('--repository-path', '-C', default=os.getcwd())
-def main(commit_id, repository_path):
+@click.option('--flake')
+@click.pass_context
+def main(ctx, commit_id, repository_path, flake):
+    if commit_id and flake:
+        ctx.abort("Can't use --commit-id and --flake together")
     repo = Repository(repository_path)
+    if flake:
+        commit_id = commit_from_flake(repo, Path(flake))
     commit = None
     if commit_id:
         commit = repo.revparse_single(commit_id)
