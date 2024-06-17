@@ -170,7 +170,10 @@ def browse_git(stdscr, repo, history=None, commit=None, previous=None):
                 return obj, history
 
         except Back:
-            obj = history.pop()
+            try:
+                obj = history.pop()
+            except IndexError:
+                pass
             continue
         except Quit:
             break
