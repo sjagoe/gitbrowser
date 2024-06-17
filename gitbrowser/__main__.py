@@ -96,20 +96,22 @@ def browse_objects(stdscr, items, *, name, display):
             return items[selected]
 
 
-def browse_git(stdscr, repo, history=None):
+def browse_git(stdscr, repo, history=None, commit=None):
     curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_CYAN)
     curses.curs_set(0)
     if history is None:
         history = []
     while True:
         try:
-            if len(history) == 0:
+            if len(history) == 0 and not commit:
                 ref_name = browse_refs(stdscr, repo)
                 ref = repo.lookup_reference(ref_name)
                 obj = ref.peel(ObjectType.COMMIT).tree
+            elif len(history) == 0 and commit:
+                obj = commit.tree
             else:
                 obj = history.pop()
-            while obj.type == ObjectType.TREE:
+            while obj.type == ObjectType.TREE or obj.type == ObjectType.COMMIT:
                 history.append(obj)
                 obj = browse_tree(stdscr, obj)
 
@@ -125,11 +127,15 @@ def browse_git(stdscr, repo, history=None):
 
 
 @click.command('gitbrowser')
-def main():
+@click.option('--commit-id', '-c')
+def main(commit_id):
     repo = Repository(os.getcwd())
+    commit = None
+    if commit_id:
+        commit = repo.revparse_single(commit_id)
     history = None
     while True:
-        obj, history = curses.wrapper(browse_git, repo, history)
+        obj, history = curses.wrapper(browse_git, repo, history, commit)
         if obj is None:
             break
         display_blob_content(obj.data.decode('utf-8'))
