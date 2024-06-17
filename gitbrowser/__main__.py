@@ -128,8 +128,9 @@ def browse_git(stdscr, repo, history=None, commit=None):
 
 @click.command('gitbrowser')
 @click.option('--commit-id', '-c')
-def main(commit_id):
-    repo = Repository(os.getcwd())
+@click.option('--repository-path', '-C', default=os.getcwd())
+def main(commit_id, repository_path):
+    repo = Repository(repository_path)
     commit = None
     if commit_id:
         commit = repo.revparse_single(commit_id)
