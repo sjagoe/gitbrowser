@@ -1,6 +1,8 @@
 from curses.textpad import rectangle
+from math import ceil
 import curses
 import os
+import socket
 
 from pygit2 import Repository
 from pygit2.enums import ObjectType
@@ -25,7 +27,6 @@ def display_blob_content(content):
 
 def curses_selector(items, selected_ix, *, height, width, uly, ulx, display):
     items_win = curses.newwin(height, width, uly + 1, ulx + 2)
-
     for index, item in enumerate(items):
         if index >= height:
             break
@@ -48,35 +49,45 @@ def browse_tree(stdscr, tree):
         stdscr,
         list(tree),
         name='tree',
-        display=lambda i: ' '.join([i.type_str, str(i.id), i.name])
+        display=lambda i: ' '.join([i.type_str, str(i.id), i.name]),
     )
+
+
+def pagination(item_count, visible_item_count, selected_ix):
+    page_start_ix = selected_ix - (selected_ix % visible_item_count)
+    pages = int(ceil(item_count / visible_item_count))
+    page = int(ceil(float(page_start_ix) / visible_item_count))
+    return page, pages, page_start_ix
 
 
 def browse_objects(stdscr, items, *, name, display):
     selected = 0
+    item_count = len(items)
     while True:
         stdscr.clear()
         uly, ulx = stdscr.getbegyx()
         lry, lrx = stdscr.getmaxyx()
 
-        # wtf
-        height = curses.LINES - 9
-        width = curses.COLS - 3
+        # one header line
+        # four footer lines
+        height = curses.LINES - 5
+        # Two cols padding on each side
+        width = curses.COLS - 4
+
+        page, pages, page_start_ix = pagination(item_count, height, selected)
 
         rectangle(stdscr, uly, ulx, lry - 4, lrx - 1)
         stdscr.addstr(uly, ulx + 2, name)
 
         stdscr.addstr(curses.LINES - 2, ulx + 2, '^X Exit | ^G Back/Refresh')
 
-        items_win = curses_selector(
-            items,
-            selected,
-            height=height,
-            width=width,
-            uly=uly,
-            ulx=ulx,
-            display=display,
-        )
+        display_items = items[page_start_ix:page_start_ix + height]
+        items_win = curses.newwin(height, width, uly + 1, ulx + 2)
+        for index, item in enumerate(display_items):
+            style = curses.A_NORMAL
+            if index + page_start_ix == selected:
+                style = curses.color_pair(1)
+            items_win.addstr(index, 0, display(item), style)
 
         stdscr.refresh()
         items_win.refresh()
