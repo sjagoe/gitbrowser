@@ -124,24 +124,40 @@ def browse_tree(stdscr, tree):
             return items[selected]
 
 
-def browse_git(stdscr, repo):
+def browse_git(stdscr, repo, history=None):
     curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_CYAN)
     curses.curs_set(0)
+    if history is None:
+        history = []
     while True:
         try:
-            ref_name = browse_refs(stdscr, repo)
-            ref = repo.lookup_reference(ref_name)
-            obj = ref.peel(ObjectType.COMMIT).tree
+            if len(history) == 0:
+                ref_name = browse_refs(stdscr, repo)
+                ref = repo.lookup_reference(ref_name)
+                obj = ref.peel(ObjectType.COMMIT).tree
+            else:
+                obj = history.pop()
             while obj.type == ObjectType.TREE:
+                history.append(obj)
                 obj = browse_tree(stdscr, obj)
-            return obj
+
+            if obj.type == ObjectType.BLOB and not obj.is_binary:
+                return obj, history
+
         except Back:
+            obj = history.pop()
             continue
         except Quit:
             break
+    return None, None
 
 
 @click.command('gitbrowser')
 def main():
     repo = Repository(os.getcwd())
-    print(curses.wrapper(browse_git, repo))
+    history = None
+    while True:
+        obj, history = curses.wrapper(browse_git, repo, history)
+        if obj is None:
+            break
+        display_blob_content(obj.data.decode('utf-8'))
