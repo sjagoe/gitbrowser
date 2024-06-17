@@ -5,7 +5,7 @@ import curses
 import json
 import os
 
-from pygit2 import Repository
+from pygit2 import Repository, GitError
 from pygit2.enums import ObjectType
 from pypager.source import StringSource
 from pypager.pager import Pager
@@ -207,7 +207,12 @@ def commit_from_flake(repo, flake):
 def main(ctx, commit_id, repository_path, flake):
     if commit_id and flake:
         ctx.fail("Can't use --commit-id and --flake together")
-    repo = Repository(repository_path)
+
+    try:
+        repo = Repository(repository_path)
+    except GitError as e:
+        ctx.fail(str(e))
+
     if flake:
         commit_id = commit_from_flake(repo, Path(flake))
     commit = None
