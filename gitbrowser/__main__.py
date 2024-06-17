@@ -1,5 +1,6 @@
 from curses.textpad import rectangle
 from math import ceil
+from pathlib import Path, PosixPath
 import curses
 import os
 import socket
@@ -39,16 +40,16 @@ def browse_refs(stdscr, repo):
     return browse_objects(
         stdscr,
         list(repo.references),
-        name='refs',
+        name=repo.path,
         display=lambda i: i,
     )
 
 
-def browse_tree(stdscr, tree, previous):
+def browse_tree(stdscr, tree, previous, name):
     return browse_objects(
         stdscr,
         list(tree),
-        name='tree',
+        name=name,
         display=lambda i: ' '.join([i.type_str, str(i.id), i.name]),
         previous=previous,
     )
@@ -121,6 +122,18 @@ def browse_objects(stdscr, items, *, name, display, previous=None):
             return items[selected]
 
 
+def history_to_path(repo, history):
+    parts = [i for i in history if i.type == ObjectType.TREE]
+    if len(parts) == 0:
+        return ''
+    names = [i.name for i in parts if i.name is not None]
+    path = PosixPath(*names).as_posix()
+    repo_path = Path(repo.path)
+    if repo_path.name == '.git':
+        repo_path = repo_path.parent
+    return f'{repo_path.name}:{path}'
+
+
 def browse_git(stdscr, repo, history=None, commit=None, previous=None):
     curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_CYAN)
     curses.curs_set(0)
@@ -141,7 +154,12 @@ def browse_git(stdscr, repo, history=None, commit=None, previous=None):
                 obj = history.pop()
             while obj.type == ObjectType.TREE or obj.type == ObjectType.COMMIT:
                 history.append(obj)
-                obj = browse_tree(stdscr, obj, previous)
+                obj = browse_tree(
+                    stdscr,
+                    obj,
+                    previous,
+                    name=history_to_path(repo, history),
+                )
                 previous = None
 
             if obj.type == ObjectType.BLOB and not obj.is_binary:
