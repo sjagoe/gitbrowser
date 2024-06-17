@@ -44,12 +44,13 @@ def browse_refs(stdscr, repo):
     )
 
 
-def browse_tree(stdscr, tree):
+def browse_tree(stdscr, tree, previous):
     return browse_objects(
         stdscr,
         list(tree),
         name='tree',
         display=lambda i: ' '.join([i.type_str, str(i.id), i.name]),
+        previous=previous,
     )
 
 
@@ -60,8 +61,11 @@ def pagination(item_count, visible_item_count, selected_ix):
     return page, pages, page_start_ix
 
 
-def browse_objects(stdscr, items, *, name, display):
-    selected = 0
+def browse_objects(stdscr, items, *, name, display, previous=None):
+    if previous:
+        selected = items.index(previous)
+    else:
+        selected = 0
     item_count = len(items)
     while True:
         stdscr.clear()
@@ -117,11 +121,12 @@ def browse_objects(stdscr, items, *, name, display):
             return items[selected]
 
 
-def browse_git(stdscr, repo, history=None, commit=None):
+def browse_git(stdscr, repo, history=None, commit=None, previous=None):
     curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_CYAN)
     curses.curs_set(0)
     if history is None:
         history = []
+    obj = None
     while True:
         try:
             if len(history) == 0 and not commit:
@@ -131,10 +136,13 @@ def browse_git(stdscr, repo, history=None, commit=None):
             elif len(history) == 0 and commit:
                 obj = commit.tree
             else:
+                if obj:
+                    previous = obj
                 obj = history.pop()
             while obj.type == ObjectType.TREE or obj.type == ObjectType.COMMIT:
                 history.append(obj)
-                obj = browse_tree(stdscr, obj)
+                obj = browse_tree(stdscr, obj, previous)
+                previous = None
 
             if obj.type == ObjectType.BLOB and not obj.is_binary:
                 return obj, history
@@ -156,8 +164,10 @@ def main(commit_id, repository_path):
     if commit_id:
         commit = repo.revparse_single(commit_id)
     history = None
+    obj = None
     while True:
-        obj, history = curses.wrapper(browse_git, repo, history, commit)
+        obj, history = curses.wrapper(
+            browse_git, repo, history, commit, previous=obj)
         if obj is None:
             break
         display_blob_content(obj.data.decode('utf-8'))
