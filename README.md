@@ -1,0 +1,7 @@
+# gitbrowser
+
+A simple curses browser for git repositories. Intended for reading
+text files from arbitrary revisions in the repository, without
+checking out the requisite commit.
+
+Essentially a wrapper around `git ls-tree` and `git cat-file`.
