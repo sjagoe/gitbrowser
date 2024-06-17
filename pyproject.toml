@@ -8,6 +8,8 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 click = "^8.1.7"
+pypager = "^3.0.1"
+pygit2 = "^1.15.0"
 
 [tool.poetry.scripts]
 gitbrowser = 'gitbrowser.__main__:main'
