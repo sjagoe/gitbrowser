@@ -206,7 +206,7 @@ def commit_from_flake(repo, flake):
 @click.pass_context
 def main(ctx, commit_id, repository_path, flake):
     if commit_id and flake:
-        ctx.abort("Can't use --commit-id and --flake together")
+        ctx.fail("Can't use --commit-id and --flake together")
     repo = Repository(repository_path)
     if flake:
         commit_id = commit_from_flake(repo, Path(flake))
