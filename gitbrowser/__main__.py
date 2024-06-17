@@ -3,7 +3,6 @@ from math import ceil
 from pathlib import Path, PosixPath
 import curses
 import os
-import socket
 
 from pygit2 import Repository
 from pygit2.enums import ObjectType
