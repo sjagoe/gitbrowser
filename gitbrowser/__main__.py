@@ -35,53 +35,25 @@ def curses_selector(items, selected_ix, *, height, width, uly, ulx, display):
 
 
 def browse_refs(stdscr, repo):
-    selected = 0
-    items = list(repo.references)
-    while True:
-        stdscr.clear()
-
-        uly, ulx = stdscr.getbegyx()
-        lry, lrx = stdscr.getmaxyx()
-
-        # wtf
-        height = curses.LINES - 9
-        width = curses.COLS - 3
-
-        rectangle(stdscr, uly, ulx, lry - 4, lrx - 1)
-        stdscr.addstr(uly, ulx + 2, 'refs')
-
-        stdscr.addstr(curses.LINES - 2, ulx + 2, '^X Exit | ^G Back/Refresh')
-
-        items_win = curses_selector(
-            items,
-            selected,
-            height=height,
-            width=width,
-            uly=uly,
-            ulx=ulx,
-            display=lambda i: i,
-        )
-
-        stdscr.refresh()
-        items_win.refresh()
-
-        key = stdscr.getch()
-        keyname = curses.keyname(key)
-        if keyname == b'KEY_UP':
-            selected = (selected - 1) % len(items)
-        elif keyname == b'KEY_DOWN':
-            selected = (selected + 1) % len(items)
-        elif keyname == b'^G':
-            raise Back()
-        elif keyname == b'^X':
-            raise Quit()
-        elif key == curses.ascii.LF:
-            return items[selected]
+    return browse_objects(
+        stdscr,
+        list(repo.references),
+        name='refs',
+        display=lambda i: i,
+    )
 
 
 def browse_tree(stdscr, tree):
+    return browse_objects(
+        stdscr,
+        list(tree),
+        name='tree',
+        display=lambda i: ' '.join([i.type_str, str(i.id), i.name])
+    )
+
+
+def browse_objects(stdscr, items, *, name, display):
     selected = 0
-    items = list(tree)
     while True:
         stdscr.clear()
         uly, ulx = stdscr.getbegyx()
@@ -92,7 +64,7 @@ def browse_tree(stdscr, tree):
         width = curses.COLS - 3
 
         rectangle(stdscr, uly, ulx, lry - 4, lrx - 1)
-        stdscr.addstr(uly, ulx + 2, 'tree')
+        stdscr.addstr(uly, ulx + 2, name)
 
         stdscr.addstr(curses.LINES - 2, ulx + 2, '^X Exit | ^G Back/Refresh')
 
@@ -103,7 +75,7 @@ def browse_tree(stdscr, tree):
             width=width,
             uly=uly,
             ulx=ulx,
-            display=lambda i: ' '.join([i.type_str, str(i.id), i.name])
+            display=display,
         )
 
         stdscr.refresh()
