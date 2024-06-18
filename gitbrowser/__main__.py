@@ -58,13 +58,18 @@ def display_object(obj):
     selected = STYLES.get((type, Style.selected, binary))
     if selected is None:
         selected = STYLES[(None, Style.selected, None)]
+
+    width = 10
     match type:
         case ObjectType.TREE:
-            display = f'{obj.name}/'
+            display = f'{"tree":<{width}s}{obj.name}/'
         case 'ref':
-            display = obj
+            display = f'{"ref":<{width}s}{obj}'
+        case ObjectType.BLOB:
+            label = 'binary' if obj.is_binary else 'text'
+            display = f'{label:<{width}s}{obj.name}'
         case _:
-            display = obj.name
+            display = f'{" ":<{width}s}{obj.name}'
     return (normal, selected, display)
 
 
@@ -84,6 +89,7 @@ def define_styles():
     define_style(
         (None, Style.selected, None),
         curses.COLOR_BLACK, curses.COLOR_CYAN,
+        flags=curses.A_BOLD | curses.A_DIM,
     )
     define_style(
         (ObjectType.TREE, Style.normal, None),
