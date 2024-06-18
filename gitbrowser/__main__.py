@@ -26,16 +26,6 @@ def display_blob_content(content):
     p.run()
 
 
-def curses_selector(items, selected_ix, *, height, width, uly, ulx, display):
-    items_win = curses.newwin(height, width, uly + 1, ulx + 2)
-    for index, item in enumerate(items):
-        if index >= height:
-            break
-        style = curses.color_pair(1) if index == selected_ix else curses.A_NORMAL
-        items_win.addstr(index, 0, display(item), style)
-    return items_win
-
-
 def browse_refs(stdscr, repo):
     return browse_objects(
         stdscr,
