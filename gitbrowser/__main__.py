@@ -191,13 +191,13 @@ def repo_name(repo):
     return repo_path.name
 
 
-def history_to_path(repo, commit, history):
+def history_to_path(repo, revision, history):
     parts = [i for i in history if i.type == ObjectType.TREE]
     if len(parts) == 0:
         return ''
     names = [i.name for i in parts if i.name is not None]
     path = PosixPath(*names).as_posix()
-    return f'{repo_name(repo)}@{commit}:{path}'
+    return f'{repo_name(repo)}@{revision}:{path}'
 
 
 def browse_git(stdscr, repo, history=None, commit=None, previous=None):
@@ -206,12 +206,17 @@ def browse_git(stdscr, repo, history=None, commit=None, previous=None):
     if history is None:
         history = []
     obj = None
+    revision = None
+    if commit is not None:
+        revision = str(commit.short_id)
     while True:
         try:
             if len(history) == 0 and not commit:
                 ref_name = browse_refs(stdscr, repo)
+                revision = ref_name
                 ref = repo.lookup_reference(ref_name)
-                obj = ref.peel(ObjectType.COMMIT).tree
+                commit = ref.peel(ObjectType.COMMIT)
+                obj = commit.tree
             elif len(history) == 0 and commit:
                 obj = commit.tree
             else:
@@ -224,7 +229,7 @@ def browse_git(stdscr, repo, history=None, commit=None, previous=None):
                     stdscr,
                     obj,
                     previous,
-                    name=history_to_path(repo, commit, history),
+                    name=history_to_path(repo, revision, history),
                 )
                 previous = None
 
