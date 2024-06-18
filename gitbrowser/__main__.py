@@ -211,13 +211,14 @@ def history_to_path(repo, revision, history):
     return f'{repo_name(repo)}@{revision}:{path}'
 
 
-def browse_git(stdscr, repo, history=None, commit=None, previous=None):
+def browse_git(stdscr, repo, commit=None):
     define_styles()
     curses.curs_set(0)
-    if history is None:
-        history = []
+
+    history = []
     obj = None
     revision = None
+    previous = None
     if commit is not None:
         revision = str(commit.short_id)
     while True:
@@ -245,7 +246,11 @@ def browse_git(stdscr, repo, history=None, commit=None, previous=None):
                 previous = None
 
             if obj.type == ObjectType.BLOB and not obj.is_binary:
-                return obj, history
+                curses.reset_shell_mode()
+                try:
+                    display_blob_content(obj.data.decode('utf-8'))
+                finally:
+                    curses.reset_prog_mode()
 
         except Back:
             try:
@@ -255,7 +260,6 @@ def browse_git(stdscr, repo, history=None, commit=None, previous=None):
             continue
         except Quit:
             break
-    return None, None
 
 
 def commit_from_flake(repo, flake):
@@ -296,12 +300,5 @@ def main(ctx, commit_id, repository_path, flake):
     commit = None
     if commit_id:
         commit = repo.revparse_single(commit_id)
-    history = None
-    obj = None
 
-    while True:
-        obj, history = curses.wrapper(
-            browse_git, repo, history, commit, previous=obj)
-        if obj is None:
-            break
-        display_blob_content(obj.data.decode('utf-8'))
+    curses.wrapper(browse_git, repo, commit)
