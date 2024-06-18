@@ -212,6 +212,12 @@ def history_to_path(repo, revision, history):
 
 
 def browse_git(stdscr, repo, commit=None):
+    def reset(mode):
+        stdscr.clear()
+        stdscr.clearok(True)
+        stdscr.refresh()
+        mode()
+
     define_styles()
     curses.curs_set(0)
 
@@ -246,17 +252,11 @@ def browse_git(stdscr, repo, commit=None):
                 previous = None
 
             if obj.type == ObjectType.BLOB and not obj.is_binary:
-                stdscr.clear()
-                stdscr.clearok(True)
-                stdscr.refresh()
-                curses.reset_shell_mode()
+                reset(curses.reset_shell_mode)
                 try:
                     display_blob_content(obj.data.decode('utf-8'))
                 finally:
-                    curses.reset_prog_mode()
-                    stdscr.clear()
-                    stdscr.clearok(True)
-                    stdscr.refresh()
+                    reset(curses.reset_prog_mode)
 
         except Back:
             try:
@@ -266,10 +266,7 @@ def browse_git(stdscr, repo, commit=None):
             continue
         except Quit:
             break
-    curses.reset_prog_mode()
-    stdscr.clear()
-    stdscr.clearok(True)
-    stdscr.refresh()
+    reset(curses.reset_prog_mode)
 
 
 def commit_from_flake(repo, flake):
