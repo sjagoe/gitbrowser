@@ -79,6 +79,8 @@ def define_style(key, foreground, background, flags=None):
 
 
 def define_styles():
+    global STYLES
+    STYLES = {}
     define_style(
         (None, Style.selected, None),
         curses.COLOR_BLACK, curses.COLOR_CYAN,
