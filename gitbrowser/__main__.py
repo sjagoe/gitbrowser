@@ -59,18 +59,20 @@ def display_object(obj):
     if selected is None:
         selected = STYLES[(None, Style.selected, None)]
 
-    width = 10
     match type:
         case ObjectType.TREE:
-            display = f'{"tree":<{width}s}{obj.name}/'
+            label = 'tree'
+            display = f'{obj.name}/'
         case 'ref':
-            display = f'{"ref":<{width}s}{obj}'
+            label = 'ref'
+            display = f'{obj}'
         case ObjectType.BLOB:
             label = 'binary' if obj.is_binary else 'text'
-            display = f'{label:<{width}s}{obj.name}'
+            display = f'{obj.name}'
         case _:
-            display = f'{" ":<{width}s}{obj.name}'
-    return (normal, selected, display)
+            label = ''
+            display = obj.name
+    return (normal, selected, label, display)
 
 
 def define_style(key, foreground, background, flags=None):
@@ -158,11 +160,12 @@ def browse_objects(stdscr, items, *, name, display, previous=None):
         display_items = items[page_start_ix:page_start_ix + height]
         items_win = curses.newwin(height, width, uly + 1, ulx + 2)
         for index, item in enumerate(display_items):
-            normal_style, selected_style, formatted = display(item)
+            normal_style, selected_style, label, formatted = display(item)
             style = normal_style
             if index + page_start_ix == selected:
                 style = selected_style
-            items_win.addstr(index, 0, formatted, style)
+            items_win.addstr(index, 0, label, curses.A_NORMAL | curses.A_DIM)
+            items_win.addstr(index, 10, formatted, style)
 
         stdscr.refresh()
         items_win.refresh()
