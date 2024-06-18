@@ -246,11 +246,17 @@ def browse_git(stdscr, repo, commit=None):
                 previous = None
 
             if obj.type == ObjectType.BLOB and not obj.is_binary:
+                stdscr.clear()
+                stdscr.clearok(True)
+                stdscr.refresh()
                 curses.reset_shell_mode()
                 try:
                     display_blob_content(obj.data.decode('utf-8'))
                 finally:
                     curses.reset_prog_mode()
+                    stdscr.clear()
+                    stdscr.clearok(True)
+                    stdscr.refresh()
 
         except Back:
             try:
@@ -260,6 +266,10 @@ def browse_git(stdscr, repo, commit=None):
             continue
         except Quit:
             break
+    curses.reset_prog_mode()
+    stdscr.clear()
+    stdscr.clearok(True)
+    stdscr.refresh()
 
 
 def commit_from_flake(repo, flake):
