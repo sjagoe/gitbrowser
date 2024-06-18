@@ -1,4 +1,5 @@
 from curses.textpad import rectangle
+from enum import Enum
 from math import ceil
 from pathlib import Path, PosixPath
 import curses
@@ -20,6 +21,14 @@ class Back(Exception):
     pass
 
 
+class Style(Enum):
+    normal = 'normal'
+    selected = 'selected'
+
+
+STYLES = {}
+
+
 def display_blob_content(content):
     p = Pager()
     p.add_source(StringSource(content))
@@ -31,7 +40,69 @@ def browse_refs(stdscr, repo):
         stdscr,
         list(repo.references),
         name=repo.path,
-        display=lambda i: i,
+        display=display_object,
+    )
+
+
+def display_object(obj):
+    if isinstance(obj, str):
+        type = 'ref'
+    else:
+        type = obj.type
+
+    binary = None
+    if type == ObjectType.BLOB:
+        binary = obj.is_binary
+
+    normal = STYLES.get((type, Style.normal, binary), curses.A_NORMAL)
+    selected = STYLES.get((type, Style.selected, binary))
+    if selected is None:
+        selected = STYLES[(None, Style.selected, None)]
+    match type:
+        case ObjectType.TREE:
+            display = f'{obj.name}/'
+        case 'ref':
+            display = obj
+        case _:
+            display = obj.name
+    return (normal, selected, display)
+
+
+def define_style(key, foreground, background, flags=None):
+    global STYLES
+    pair = len(STYLES) + 1
+    curses.init_pair(pair, foreground, background)
+    style = curses.color_pair(pair)
+    if flags:
+        style = style | flags
+    STYLES[key] = style
+
+
+def define_styles():
+    define_style(
+        (None, Style.selected, None),
+        curses.COLOR_BLACK, curses.COLOR_CYAN,
+    )
+    define_style(
+        (ObjectType.TREE, Style.normal, None),
+        curses.COLOR_BLUE, curses.COLOR_BLACK,
+        flags=curses.A_BOLD,
+    )
+    define_style(
+        (ObjectType.TREE, Style.selected, None),
+        curses.COLOR_BLUE, curses.COLOR_CYAN,
+        flags=curses.A_BOLD | curses.A_DIM,
+    )
+
+    define_style(
+        (ObjectType.BLOB, Style.normal, True),
+        curses.COLOR_RED, curses.COLOR_BLACK,
+        flags=curses.A_BOLD
+    )
+    define_style(
+        (ObjectType.BLOB, Style.selected, True),
+        curses.COLOR_RED, curses.COLOR_CYAN,
+        flags=curses.A_BOLD | curses.A_DIM
     )
 
 
@@ -40,7 +111,7 @@ def browse_tree(stdscr, tree, previous, name):
         stdscr,
         list(tree),
         name=name,
-        display=lambda i: ' '.join([i.type_str, str(i.id), i.name]),
+        display=display_object,
         previous=previous,
     )
 
@@ -79,10 +150,11 @@ def browse_objects(stdscr, items, *, name, display, previous=None):
         display_items = items[page_start_ix:page_start_ix + height]
         items_win = curses.newwin(height, width, uly + 1, ulx + 2)
         for index, item in enumerate(display_items):
-            style = curses.A_NORMAL
+            normal_style, selected_style, formatted = display(item)
+            style = normal_style
             if index + page_start_ix == selected:
-                style = curses.color_pair(1)
-            items_win.addstr(index, 0, display(item), style)
+                style = selected_style
+            items_win.addstr(index, 0, formatted, style)
 
         stdscr.refresh()
         items_win.refresh()
@@ -129,7 +201,7 @@ def history_to_path(repo, commit, history):
 
 
 def browse_git(stdscr, repo, history=None, commit=None, previous=None):
-    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_CYAN)
+    define_styles()
     curses.curs_set(0)
     if history is None:
         history = []
@@ -210,6 +282,7 @@ def main(ctx, commit_id, repository_path, flake):
         commit = repo.revparse_single(commit_id)
     history = None
     obj = None
+
     while True:
         obj, history = curses.wrapper(
             browse_git, repo, history, commit, previous=obj)
